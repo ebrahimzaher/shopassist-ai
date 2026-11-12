@@ -345,8 +345,6 @@ All settings can be overridden via environment variables or edited directly in `
 ## 👨‍💻 Author
 
 **Ebrahim Zaher**
-- 🐙 GitHub: [@ebrahimzaher](https://github.com/ebrahimzaher)
-- 📧 Email: ebrahimzaherr0@gmail.com
 
 ---
 
