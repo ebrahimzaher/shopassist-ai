@@ -13,7 +13,8 @@ class AnswerGenerator:
     def generate(self, question: str, retrieved_docs: list):
         if not retrieved_docs:
             return (
-                "I'm sorry, but I couldn't find an answer to your question. Please contact Nile Store customer support for further assistance."
+                "عذراً، لم أجد معلومات كافية للإجابة على سؤالك. 🙏\n"
+                "يمكنك التواصل مع خدمة عملاء Nile Store للمساعدة."
             )
 
         context_parts = []
@@ -54,6 +55,13 @@ Rules:
 8. Never mention source files, PDF names, page numbers,
    citations, or internal document references in your answer.
 9. Present the answer naturally as a customer support assistant.
+
+LANGUAGE RULES:
+- Always answer in the same language as the user's question.
+- If the user asks in Arabic, answer in Arabic.
+- If the user asks in English, answer in English.
+- Use natural, friendly Egyptian Arabic when answering in Arabic.
+- Do not mix Arabic and English unnecessarily.
 
 CONTACT INFORMATION RULES:
 - Only provide contact details explicitly found in the retrieved context.
@@ -99,7 +107,7 @@ if __name__ == "__main__":
     retriever = Retriever()
     generator = AnswerGenerator()
 
-    question = "How much is the wireless mouse?"
+    question = "كام سعر الماوس اللاسلكي؟"
 
     print("Question:", question)
 
