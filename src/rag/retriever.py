@@ -1,26 +1,89 @@
+import logging
 
 from qdrant_client import models
+
 from config import (
     STORE_ID,
     QDRANT_COLLECTION,
     TOP_K,
     SIMILARITY_THRESHOLD
 )
+
 from database import get_qdrant_client
-from rag import EmbeddingService
+from rag.embeddings import EmbeddingService
+
+logger = logging.getLogger(__name__)
+
+STOP_WORDS = {
+    # Arabic
+    "كام", "كم", "بكام", "سعر", "اسعار", "ما", "هو",
+    "هي", "هل", "من", "في", "على", "عن", "ايه",
+    "ماهو", "ممكن", "عايز", "اعرف",
+
+    # English
+    "how", "much", "what", "is", "the", "of",
+    "price", "cost", "for", "do", "you", "have"
+}
+
+SYNONYMS = {
+    "الماوس": "mouse",  "ماوس": "mouse",    "mouse": "mouse",
+    "اللاسلكي": "wireless", "لاسلكي": "wireless", "wireless": "wireless",
+    "الشاحن": "charger", "شاحن": "charger",  "charger": "charger",
+    "الكابل": "cable",  "كابل": "cable",    "cable": "cable",
+    "باور": "power",    "بنك": "bank",
+}
+
+
+def _normalize(text: str) -> str:
+    """Lowercase, strip diacritics, and collapse whitespace."""
+    import re
+    import unicodedata
+
+    text = text.lower().strip()
+    text = re.sub(r"[\u064B-\u065F\u0670]", "", text)
+    text = text.replace("\u0640", "")
+    text = re.sub(r"[أإآ]", "ا", text)
+    text = text.replace("ى", "ي")
+    text = re.sub(r"[^\w\s]", " ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def _keywords(text: str) -> set:
+    words = _normalize(text).split()
+    return {SYNONYMS.get(w, w) for w in words if w not in STOP_WORDS}
+
+
+def _keyword_score(query: str, document: str) -> float:
+    qk = _keywords(query)
+    dk = _keywords(document)
+    if not qk:
+        return 0.0
+    return len(qk & dk) / len(qk)
+
+
+def _product_code_match(query: str, document: str) -> bool:
+    import re
+    pattern = r"\bNS-\d+\b"
+    q_codes = set(re.findall(pattern, query.upper()))
+    d_codes = set(re.findall(pattern, document.upper()))
+    return bool(q_codes & d_codes)
+
 
 class Retriever:
+
     def __init__(self):
         self.client = get_qdrant_client()
         self.embedding_service = EmbeddingService()
 
-    def search(self, query: str, top_k: int = TOP_K):
-        if not query.strip():
+    def search(self, query: str, top_k: int = TOP_K) -> list[dict]:
+        if not query or not query.strip():
             return []
 
         query_vector = self.embedding_service.encode([query])[0]
 
-        results = self.client.query_points(
+        candidate_limit = min(max(top_k * 5, 20), 50)
+
+        raw = self.client.query_points(
             collection_name=QDRANT_COLLECTION,
             query=query_vector.tolist(),
             query_filter=models.Filter(
@@ -31,41 +94,55 @@ class Retriever:
                     )
                 ]
             ),
-            limit=top_k,
+            limit=candidate_limit,
             with_payload=True
         ).points
 
-        relevant_results = []
+        logger.debug("Candidates retrieved: %d", len(raw))
 
-        for result in results:
-            if result.score < SIMILARITY_THRESHOLD:
+        results = []
+
+        for hit in raw:
+            payload = hit.payload or {}
+            text = payload.get("text", "")
+            semantic = float(hit.score)
+
+            if semantic < SIMILARITY_THRESHOLD:
                 continue
 
-            relevant_results.append({
-                "text": result.payload["text"],
-                "source": result.payload["source"],
-                "page": result.payload["page"],
-                "score": result.score
+            kw_score = _keyword_score(query, text)
+            code_bonus = 0.35 if _product_code_match(query, text) else 0.0
+            final = semantic + 0.20 * kw_score + code_bonus
+
+            results.append({
+                "text": text,
+                "source": payload.get("source", "Unknown"),
+                "page": payload.get("page", 0),
+                "score": semantic,
+                "keyword_score": kw_score,
+                "final_score": final,
             })
 
-        return relevant_results
+        results.sort(key=lambda r: r["final_score"], reverse=True)
+
+        logger.debug(
+            "Top-%d results: %s",
+            top_k,
+            [
+                f"{r['source']} sem={r['score']:.2f} kw={r['keyword_score']:.2f}"
+                for r in results[:top_k]
+            ]
+        )
+
+        return results[:top_k]
+
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     retriever = Retriever()
-
-    question = "How much is the wireless mouse?"
-
-    results = retriever.search(question)
-
-    print("\nQuestion:", question)
-    print("\nRetrieved documents:")
-
-    if not results:
-        print("No relevant information found.")
-
-    for index, result in enumerate(results, start=1):
-        print(f"\nResult {index}")
-        print("Score:", round(result["score"], 3))
-        print("Source:", result["source"])
-        print("Page:", result["page"])
-        print("Text:", result["text"])
+    q = "كام سعر الماوس اللاسلكي؟"
+    docs = retriever.search(q)
+    print(f"\nQuestion: {q}")
+    for i, d in enumerate(docs, 1):
+        print(f"\nResult {i}: {d['source']} | score={d['score']:.3f}")
+        print(d["text"][:200])

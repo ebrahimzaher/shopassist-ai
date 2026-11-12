@@ -20,7 +20,7 @@ class EmbeddingService:
         embeddings = self.model.encode(
             texts,
             normalize_embeddings=True,
-            show_progress_bar=True,
+            show_progress_bar=False,
             convert_to_numpy=True
         )
 

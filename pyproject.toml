@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shopassist-ai"
+version = "0.1.0"
+description = "RAG-powered conversational AI customer support assistant for e-commerce"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Ebrahim Zaher", email = "ebrahimzaherr0@gmail.com" }
+]
+keywords = [
+    "rag",
+    "telegram-bot",
+    "qdrant",
+    "groq",
+    "ecommerce",
+    "llm",
+    "sentence-transformers",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "python-telegram-bot>=22.8",
+    "python-dotenv>=1.2.4",
+    "groq>=1.7.0",
+    "qdrant-client>=1.20.0",
+    "sentence-transformers>=6.2.0",
+    "pymupdf>=2.1",
+    "httpx>=0.28.1",
+    "pydantic>=2.14.3",
+    "fastapi>=0.162.2",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
+    "black>=24.0.0",
+]
+
+[project.scripts]
+shopassist-bot = "main:main"
+shopassist-index = "rag.indexing:index_documents"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
