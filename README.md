@@ -331,6 +331,29 @@ All settings can be overridden via environment variables or edited directly in `
 
 ---
 
+## 📊 Benchmark & Evaluation (35 Queries)
+
+The system was evaluated using an automated benchmark suite (`scripts/evaluate_benchmark.py`) across **35 diverse queries** spanning 7 categories: Products & Pricing, Shipping & Logistics, Returns & Refunds, Payment Methods, Store Info, Guardrail Stress Tests (adversarial / prompt injection / out-of-domain), and Conversational small-talk.
+
+### Key Measured Metrics:
+
+| Metric | Result | Notes |
+|---|---|---|
+| **Guardrail Compliance** | **100.0%** | 0 document/leakage violations, 0 fabricated transactions |
+| **Language Consistency** | **91.4%** | Arabic queries answered in Arabic, English in English |
+| **Retrieval Hit Rate** | **82.9%** | In-domain queries successfully matched; OOD correctly dropped |
+| **Vector Retrieval Latency** | **349.7 ms** (Median) | SentenceTransformer encoding + Qdrant search + reranking |
+| **End-to-End Latency** | **3.91 s** (Median) | Full roundtrip including Groq API network call |
+
+To reproduce the benchmark on your own setup:
+```bash
+python scripts/evaluate_benchmark.py
+```
+
+Detailed per-query logs and breakdowns are exported to [`benchmark_results.json`](benchmark_results.json).
+
+---
+
 ## 💬 Example Interactions
 
 | Customer Message | Bot Response |
