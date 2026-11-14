@@ -337,13 +337,18 @@ The system was evaluated using an automated benchmark suite (`scripts/evaluate_b
 
 ### Key Measured Metrics:
 
-| Metric | Result | Notes |
+| Metric | Result | Definition |
 |---|---|---|
-| **Guardrail Compliance** | **100.0%** | 0 document/leakage violations, 0 fabricated transactions |
-| **Language Consistency** | **91.4%** | Arabic queries answered in Arabic, English in English |
-| **Retrieval Hit Rate** | **82.9%** | In-domain queries successfully matched; OOD correctly dropped |
-| **Vector Retrieval Latency** | **349.7 ms** (Median) | SentenceTransformer encoding + Qdrant search + reranking |
-| **End-to-End Latency** | **3.91 s** (Median) | Full roundtrip including Groq API network call |
+| **Guardrail Compliance** | **100.0%** (35/35) | Programmatic check verifying 0 internal metadata leaks (`document`, `PDF`, `مستندات`), 0 false order/refund confirmations, and 0 third-person persona breaks. |
+| **Language Consistency** | **100.0%** (35/35) | Automated script detection verifying that the response script (Arabic Unicode `\u0600-\u06FF` vs. Latin) strictly matched the customer query language. |
+| **Retrieval Hit Rate** | **82.9%** (29/35) | Percentage of queries where at least one knowledge chunk scored above the cosine cutoff (`SIMILARITY_THRESHOLD = 0.40`). |
+| **Vector Retrieval Latency** | **234.4 ms** (Median) | Time to compute MiniLM query embedding + Qdrant vector retrieval + lexical keyword reranking (P95: 302.6 ms). |
+| **End-to-End Latency** | **5.96 s** (Median) | Complete user turnaround time: retrieval pipeline + Groq LLM API generation over network. |
+
+### Failure Analysis & Iteration Insights:
+
+- **Language Consistency Resolution (100.0% - 35/35)**: Initial benchmark runs revealed 3 language mismatches on English out-of-domain questions (`M04` crypto, `G02` appliances, `G05` prompt injection) where 0 relevant chunks met the similarity threshold, triggering a hardcoded Arabic fallback template. Introducing query-language detection on the 0-chunk fallback path in `generator.py` resolved this, bringing consistency to a perfect 35/35.
+- **Retrieval Drop Root Cause (6 / 35)**: 4 out of the 6 drops were **intended safety drops** where out-of-domain or adversarial queries correctly scored below the 0.40 threshold. The remaining 2 (`P03` 20W charger cable, `P07` speaker) stemmed from a cross-lingual vocabulary gap between colloquial Egyptian terms (e.g., using "سماعة" instead of "speaker") and English PDF catalog entries, causing cosine scores to narrowly miss the threshold.
 
 To reproduce the benchmark on your own setup:
 ```bash

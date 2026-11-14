@@ -1,3 +1,4 @@
+import re
 from groq import Groq
 from config import GROQ_API_KEY, GROQ_MODEL
 
@@ -12,9 +13,14 @@ class AnswerGenerator:
 
     def generate(self, question: str, retrieved_docs: list):
         if not retrieved_docs:
+            if re.search(r"[\u0600-\u06FF]", question):
+                return (
+                    "عذراً، لم أجد معلومات كافية للإجابة على سؤالك. 🙏\n"
+                    "يمكنك التواصل مع خدمة عملاء Nile Store للمساعدة."
+                )
             return (
-                "عذراً، لم أجد معلومات كافية للإجابة على سؤالك. 🙏\n"
-                "يمكنك التواصل مع خدمة عملاء Nile Store للمساعدة."
+                "I'm sorry, but I couldn't find enough information to answer your question. 🙏\n"
+                "Please reach out to Nile Store customer support for further assistance."
             )
 
         context_parts = []
