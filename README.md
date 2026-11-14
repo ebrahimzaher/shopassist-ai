@@ -16,7 +16,7 @@
 
 ---
 
-**ShopAssist AI** is a production-ready Telegram bot built on **Retrieval-Augmented Generation (RAG)**. It serves as an intelligent customer support assistant for Egyptian e-commerce stores, answering customer questions in Arabic and English with strict factual accuracy — using only information from your own store documents.
+**ShopAssist AI** is a conversational Telegram bot built on **Retrieval-Augmented Generation (RAG)**. It serves as an intelligent customer support assistant for Egyptian e-commerce stores, answering customer questions in Arabic and English with strict factual accuracy — using only information from your own store documents.
 
 ---
 
@@ -26,11 +26,11 @@
 |---|---|
 | 🧠 **Full RAG Pipeline** | Retrieves relevant store documents before every answer, with hybrid semantic + keyword reranking |
 | 🌐 **Bilingual** | Understands Egyptian Arabic (colloquial & formal) and English naturally |
-| ⚡ **Ultra-Fast Inference** | Powered by Groq Cloud — sub-second LLM responses |
+| ⚡ **Fast Inference** | Powered by Groq Cloud LPUs for low-latency text generation |
 | 🛡️ **Anti-Hallucination** | Strictly answers from retrieved documents only — never invents prices or policies |
 | 🏢 **Multi-Tenant Ready** | Isolates each store's data in Qdrant via `store_id` filtering |
 | 🔄 **Fully Async** | Uses `asyncio.to_thread` to handle concurrent messages without blocking |
-| 🐳 **Docker-Ready** | Containerized and deployable on any cloud platform in minutes |
+| 🐳 **Docker-Ready** | Containerized and deployable on any cloud platform |
 
 ---
 
@@ -185,15 +185,15 @@ Open `.env` and fill in your credentials:
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 
 GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=llama3-70b-8192
+GROQ_MODEL=openai/gpt-oss-20b
 
 QDRANT_URL=https://your-cluster-id.qdrant.io
 QDRANT_API_KEY=your_qdrant_api_key
 
-STORE_ID=my_store
+STORE_ID=nile_store
 ```
 
-> **Tip:** `GROQ_MODEL` can be any model available in your Groq account, such as `mixtral-8x7b-32768` or `gemma2-9b-it`.
+> **Important — Groq Model Lifecycle:** Groq periodically deprecates or updates model names. If a model is retired, you can switch to any active model in your Groq account (such as `llama-3.3-70b-versatile` or `llama-3.1-8b-instant`) simply by updating `GROQ_MODEL` in `.env` without modifying any code. Check the [Groq Supported Models documentation](https://console.groq.com/docs/models) for the latest list of active models.
 
 ---
 
@@ -302,14 +302,15 @@ Telegram  →  Deliver answer to customer ✅
 
 ## 🛡️ Anti-Hallucination Guardrails
 
-The system enforces 9 strict rules in the LLM system prompt:
+The system enforces 7 core guardrail rules in the LLM system prompt:
 
-1. **No fabrication** — Only answer from the retrieved context.
-2. **Explicit fallback** — Clearly states when information is not available.
-3. **Language mirroring** — Responds in the same language the customer uses.
-4. **No false confirmations** — Never claims an order was placed or a refund was approved.
-5. **Clean output** — Never exposes file names, page numbers, or chunk IDs to the customer.
-6. **Contact integrity** — Never invents phone numbers, emails, or URLs.
+1. **No fabrication** — Only answer using factual information present in the retrieved context; never invent prices, policies, or products.
+2. **Graceful handling of unmentioned services** — If a service or feature (e.g., installments) is absent from the context, treat it as currently unavailable rather than hallucinating terms.
+3. **First-person support persona** — Never refer to the system as "the robot" or "the chatbot"; communicate naturally as an authentic customer support representative.
+4. **No internal metadata leaks** — Never expose internal terms such as "documents", "files", "PDFs", "source", or "context" to customers.
+5. **No false transaction claims** — Never claim that an order was placed, a refund was approved, or a payment was executed.
+6. **Contact integrity** — Only provide contact details explicitly documented in the retrieved store knowledge base.
+7. **Strict language mirroring** — Detect the customer's language and respond entirely in the matching language (Arabic or English) without mixing.
 
 ---
 
